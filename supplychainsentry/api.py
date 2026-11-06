@@ -22,9 +22,9 @@ def health():
 @app.post("/api/analyze")
 def analyze(request: AnalyzeRequest):
     try:
-        components, extra = parse_manifest(request.filename, request.content)
         if request.filename.lower().endswith((".yml", ".yaml")):
-            extra.extend(analyze_workflow(request.content, request.filename))
+            return analyze_components([], analyze_workflow(request.content, request.filename))
+        components, extra = parse_manifest(request.filename, request.content)
         return analyze_components(components, extra)
     except (ValueError, TypeError, KeyError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
