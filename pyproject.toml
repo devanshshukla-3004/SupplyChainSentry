@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supplychainsentry"
+version = "0.1.0"
+description = "Offline-first software supply-chain and dependency risk analyzer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+scs = "supplychainsentry.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["supplychainsentry*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

